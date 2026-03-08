@@ -20,8 +20,8 @@ export default defineManifest({
   content_scripts: [
     {
       matches: [
-        'https://www.immersionkit.com/dictionary*',
-        'https://immersionkit.com/dictionary*'
+        'https://www.immersionkit.com/*',
+        'https://immersionkit.com/*'
       ],
       js: ['src/content/index.ts'],
       run_at: 'document_idle'

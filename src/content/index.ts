@@ -6,6 +6,7 @@ const JAPANESE_RE = /[\u3040-\u30ff\u3400-\u9faf]/;
 const LATIN_RE = /[A-Za-z]/;
 const CONTROL_TEXT_RE = /^(Mining|Download|Image|Sound|Translation|Sentence|Sentence with Furigana)$/i;
 let scanScheduled = false;
+let lastRoute = window.location.href;
 
 observePage();
 scheduleScan();
@@ -31,9 +32,22 @@ function observePage(): void {
   window.addEventListener('load', () => {
     scheduleScan();
   });
+
+  window.addEventListener('popstate', () => {
+    handleRouteChange();
+  });
+
+  patchHistoryMethod('pushState');
+  patchHistoryMethod('replaceState');
 }
 
 function scheduleScan(): void {
+  if (!isDictionaryPage()) {
+    clearInjectedButtons();
+    scanScheduled = false;
+    return;
+  }
+
   if (scanScheduled) {
     return;
   }
@@ -48,6 +62,11 @@ function scheduleScan(): void {
 }
 
 function scanForTargets(): void {
+  if (!isDictionaryPage()) {
+    clearInjectedButtons();
+    return;
+  }
+
   const ankiLabels = findAnkiLabels();
 
   for (const ankiLabel of ankiLabels) {
@@ -101,6 +120,41 @@ function scanForTargets(): void {
     });
 
     insertionAnchor.insertAdjacentElement('afterend', button);
+  }
+}
+
+function patchHistoryMethod(methodName: 'pushState' | 'replaceState'): void {
+  const original = history[methodName];
+
+  history[methodName] = function patchedHistoryState(
+    this: History,
+    ...args: Parameters<History[typeof methodName]>
+  ) {
+    const result = original.apply(this, args);
+    window.setTimeout(() => {
+      handleRouteChange();
+    }, 0);
+    return result;
+  };
+}
+
+function handleRouteChange(): void {
+  const currentRoute = window.location.href;
+  if (currentRoute === lastRoute) {
+    return;
+  }
+
+  lastRoute = currentRoute;
+  scheduleScan();
+}
+
+function isDictionaryPage(): boolean {
+  return window.location.pathname.startsWith('/dictionary');
+}
+
+function clearInjectedButtons(): void {
+  for (const button of document.querySelectorAll<HTMLElement>(`[${BUTTON_ATTR}="true"]`)) {
+    button.remove();
   }
 }
 
