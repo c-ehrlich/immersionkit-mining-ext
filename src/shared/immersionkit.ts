@@ -1,4 +1,4 @@
-import type {ExampleCandidate, SearchContext} from './types';
+import type {ExampleCandidate, MiningPayload, SearchContext} from './types';
 
 type SearchResponse = {
   examples: ExampleCandidate[];
@@ -18,7 +18,7 @@ const TITLE_OVERRIDES: Record<string, string> = {
 };
 
 function normalizeText(value: string): string {
-  return value.replace(/\s+/g, ' ').trim();
+  return value.replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
 export async function searchExamples(search: SearchContext): Promise<ExampleCandidate[]> {
@@ -56,12 +56,21 @@ export async function searchExamples(search: SearchContext): Promise<ExampleCand
 
 export function findMatchingExample(
   examples: ExampleCandidate[],
-  sentence: string
+  payload: Pick<MiningPayload, 'sentence' | 'translation' | 'title'>
 ): ExampleCandidate | null {
-  const normalizedSentence = normalizeText(sentence);
-  return (
-    examples.find((example) => normalizeText(example.sentence) === normalizedSentence) ?? null
-  );
+  const ranked = examples
+    .map((example) => ({
+      example,
+      score: scoreExampleMatch(example, payload)
+    }))
+    .sort((left, right) => right.score - left.score);
+
+  const best = ranked[0];
+  if (!best || best.score < 100) {
+    return null;
+  }
+
+  return best.example;
 }
 
 function slugToTitlePath(slug: string): string {
@@ -98,4 +107,52 @@ export function buildAudioUrl(example: ExampleCandidate): string | null {
 
   const path = buildMediaPath(example.id, example.sound, example.title);
   return `https://apiv2.immersionkit.com/download_media?path=${encodeURIComponent(path)}`;
+}
+
+function scoreExampleMatch(
+  example: ExampleCandidate,
+  payload: Pick<MiningPayload, 'sentence' | 'translation' | 'title'>
+): number {
+  const sentence = normalizeText(payload.sentence);
+  const translation = normalizeText(payload.translation ?? '');
+  const title = normalizeText(payload.title ?? '');
+
+  const exampleSentence = normalizeText(example.sentence);
+  const exampleSentenceWithFurigana = normalizeText(example.sentence_with_furigana);
+  const exampleTranslation = normalizeText(example.translation);
+  const exampleTitle = normalizeText(slugToTitlePath(example.title));
+  const exampleSlug = normalizeText(example.title.replaceAll('_', ' '));
+
+  let score = 0;
+
+  if (sentence.length > 0) {
+    if (exampleSentence === sentence) {
+      score += 160;
+    } else if (exampleSentenceWithFurigana === sentence) {
+      score += 150;
+    } else if (exampleSentence.includes(sentence) || sentence.includes(exampleSentence)) {
+      score += 80;
+    }
+  }
+
+  if (translation.length > 0) {
+    if (exampleTranslation === translation) {
+      score += 60;
+    } else if (
+      exampleTranslation.includes(translation) ||
+      translation.includes(exampleTranslation)
+    ) {
+      score += 25;
+    }
+  }
+
+  if (title.length > 0) {
+    if (exampleTitle === title || exampleSlug === title) {
+      score += 35;
+    } else if (exampleTitle.includes(title) || title.includes(exampleTitle)) {
+      score += 15;
+    }
+  }
+
+  return score;
 }

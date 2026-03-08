@@ -6,7 +6,8 @@
   "scripts": {
     "build": "vite build",
     "check": "tsc --noEmit",
-    "dev": "vite"
+    "dev": "vite",
+    "debug:chrome": "open -na \"Google Chrome\" --args --remote-debugging-port=9222 --user-data-dir=/tmp/mining-ext-debug"
   },
   "dependencies": {
     "react": "^19.1.1",

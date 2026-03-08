@@ -28,6 +28,10 @@ export type ExampleCandidate = {
 
 export type MiningPayload = {
   sentence: string;
+  translation?: string;
+  title?: string;
+  imageUrl?: string;
+  audioUrl?: string;
   search: SearchContext;
 };
 

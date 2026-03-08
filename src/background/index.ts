@@ -37,13 +37,13 @@ async function mineExample(payload: MiningPayload): Promise<MiningResult> {
   await anki.version();
 
   const examples = await searchExamples(payload.search);
-  const example = findMatchingExample(examples, payload.sentence);
+  const example = findMatchingExample(examples, payload);
   if (!example) {
     throw new Error('Could not match the clicked example against the Immersion Kit search results');
   }
 
-  const imageUrl = buildImageUrl(example);
-  const audioUrl = buildAudioUrl(example);
+  const imageUrl = payload.imageUrl ?? buildImageUrl(example);
+  const audioUrl = payload.audioUrl ?? buildAudioUrl(example);
 
   const noteId = await findLatestNoteId(anki, settings.latestNoteQuery);
 
