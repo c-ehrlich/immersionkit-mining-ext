@@ -42,4 +42,6 @@ export type MiningResult =
 export type RuntimeMessage =
   | {type: 'mine-example'; payload: MiningPayload}
   | {type: 'get-settings'}
-  | {type: 'save-settings'; payload: ExtensionSettings};
+  | {type: 'save-settings'; payload: ExtensionSettings}
+  | {type: 'get-debug-log'}
+  | {type: 'clear-debug-log'};

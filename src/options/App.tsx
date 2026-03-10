@@ -2,9 +2,11 @@ import {useEffect, useState} from 'react';
 
 import {defaultSettings} from '../shared/settings';
 import type {ExtensionSettings, RuntimeMessage} from '../shared/types';
+import type {DebugLogEntry} from '../shared/debug';
 
 export function App() {
   const [settings, setSettings] = useState<ExtensionSettings>(defaultSettings);
+  const [debugLog, setDebugLog] = useState<DebugLogEntry[]>([]);
   const [status, setStatus] = useState('Loading...');
 
   useEffect(() => {
@@ -17,6 +19,8 @@ export function App() {
       .catch((error: unknown) => {
         setStatus(error instanceof Error ? error.message : 'Failed to load settings');
       });
+
+    void loadDebugLog();
   }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -30,6 +34,20 @@ export function App() {
 
     setStatus('Saved');
     window.setTimeout(() => setStatus(''), 1500);
+  }
+
+  async function loadDebugLog() {
+    const result = (await chrome.runtime.sendMessage({
+      type: 'get-debug-log'
+    } satisfies RuntimeMessage)) as DebugLogEntry[];
+    setDebugLog(result);
+  }
+
+  async function handleClearLog() {
+    await chrome.runtime.sendMessage({
+      type: 'clear-debug-log'
+    } satisfies RuntimeMessage);
+    setDebugLog([]);
   }
 
   return (
@@ -102,6 +120,35 @@ export function App() {
         </form>
 
         {status ? <p style={styles.status}>{status}</p> : null}
+
+        <section style={styles.logSection}>
+          <div style={styles.logHeader}>
+            <h2 style={styles.logTitle}>Debug log</h2>
+            <div style={styles.logActions}>
+              <button type="button" style={styles.secondaryButton} onClick={() => void loadDebugLog()}>
+                Refresh log
+              </button>
+              <button type="button" style={styles.secondaryButton} onClick={() => void handleClearLog()}>
+                Clear log
+              </button>
+            </div>
+          </div>
+
+          <div style={styles.logList}>
+            {debugLog.length === 0 ? (
+              <p style={styles.logEmpty}>No debug entries yet.</p>
+            ) : (
+              debugLog
+                .slice()
+                .reverse()
+                .map((entry) => (
+                  <pre key={entry.id} style={styles.logEntry}>
+                    {`${entry.timestamp} [${entry.scope}] ${entry.message}\n${entry.data ? JSON.stringify(entry.data, null, 2) : ''}`}
+                  </pre>
+                ))
+            )}
+          </div>
+        </section>
       </div>
     </main>
   );
@@ -157,8 +204,59 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     cursor: 'pointer'
   },
+  secondaryButton: {
+    width: 'fit-content',
+    padding: '8px 12px',
+    borderRadius: '8px',
+    border: '1px solid #d0d5dd',
+    background: '#ffffff',
+    color: '#344054',
+    fontWeight: 600,
+    cursor: 'pointer'
+  },
   status: {
     marginTop: '16px',
     color: '#344054'
+  },
+  logSection: {
+    marginTop: '24px',
+    paddingTop: '20px',
+    borderTop: '1px solid #eaecf0'
+  },
+  logHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+    marginBottom: '12px'
+  },
+  logTitle: {
+    margin: 0,
+    fontSize: '18px'
+  },
+  logActions: {
+    display: 'flex',
+    gap: '8px'
+  },
+  logList: {
+    display: 'grid',
+    gap: '8px',
+    maxHeight: '420px',
+    overflow: 'auto'
+  },
+  logEmpty: {
+    margin: 0,
+    color: '#667085'
+  },
+  logEntry: {
+    margin: 0,
+    padding: '10px 12px',
+    borderRadius: '10px',
+    background: '#101828',
+    color: '#f8fafc',
+    fontSize: '12px',
+    lineHeight: 1.45,
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word'
   }
 };

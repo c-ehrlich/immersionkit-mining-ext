@@ -4,6 +4,7 @@ import type {
   RuntimeMessage,
   SearchContext,
 } from "../shared/types";
+import {appendDebugLog} from "../shared/debug";
 
 const BUTTON_ATTR = "data-mining-ext-button";
 const STATUS_ATTR = "data-mining-ext-status";
@@ -11,6 +12,7 @@ const JAPANESE_RE = /[\u3040-\u30ff\u3400-\u9faf]/;
 const LATIN_RE = /[A-Za-z]/;
 const CONTROL_TEXT_RE =
   /^(Mining|Download|Image|Sound|Translation|Sentence|Sentence with Furigana)$/i;
+const INJECTION_TRIGGER_RE = /^(Anki|Mining|Download)$/;
 let scanScheduled = false;
 let lastRoute = window.location.href;
 
@@ -18,8 +20,10 @@ observePage();
 scheduleScan();
 
 function observePage(): void {
-  const observer = new MutationObserver(() => {
-    scheduleScan();
+  const observer = new MutationObserver((records) => {
+    if (shouldScanForMutations(records)) {
+      scheduleScan();
+    }
   });
 
   observer.observe(document.body, {
@@ -29,6 +33,14 @@ function observePage(): void {
 
   window.addEventListener(
     "scroll",
+    () => {
+      scheduleScan();
+    },
+    { passive: true },
+  );
+
+  window.addEventListener(
+    "resize",
     () => {
       scheduleScan();
     },
@@ -102,6 +114,10 @@ function scanForTargets(): void {
         ? insertionAnchor.nextElementSibling
         : null;
 
+    if (preferredExistingButton && existingButtons.length === 1) {
+      continue;
+    }
+
     for (const existingButton of existingButtons) {
       if (existingButton !== preferredExistingButton) {
         existingButton.remove();
@@ -131,6 +147,60 @@ function scanForTargets(): void {
 
     insertionAnchor.insertAdjacentElement("afterend", button);
   }
+}
+
+function shouldScanForMutations(records: MutationRecord[]): boolean {
+  for (const record of records) {
+    if (record.type !== "childList") {
+      continue;
+    }
+
+    for (const node of [...record.addedNodes, ...record.removedNodes]) {
+      if (nodeCanAffectInjection(node)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function nodeCanAffectInjection(node: Node): boolean {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return INJECTION_TRIGGER_RE.test(cleanText(node.textContent ?? ""));
+  }
+
+  if (!(node instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (node.matches(`[${BUTTON_ATTR}], [${BUTTON_ATTR}] *`)) {
+    return false;
+  }
+
+  if (node.closest(`[${BUTTON_ATTR}]`)) {
+    return false;
+  }
+
+  if (
+    node.matches(
+      ".ui.divided.items, .item, [role='listbox'], .dropdown, [role='alert'], .divider.text",
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    node.querySelector(
+      ".ui.divided.items, .item [role='listbox'], .item .dropdown, .item [role='alert'], .item .divider.text",
+    )
+  ) {
+    return true;
+  }
+
+  return Array.from(node.querySelectorAll<HTMLElement>("div, span, button, a")).some(
+    (element) => INJECTION_TRIGGER_RE.test(cleanText(element.textContent ?? "")),
+  );
 }
 
 function patchHistoryMethod(methodName: "pushState" | "replaceState"): void {
@@ -227,6 +297,13 @@ async function handleClick(
     const title = extractTitle(exampleRoot);
     const miningToggle = findControl(exampleRoot, "Mining");
     const mediaUrls = await resolveMediaUrls(exampleRoot, miningToggle);
+    await appendDebugLog("content", "handleClick:extracted", {
+      sentence,
+      translation,
+      title,
+      mediaUrls,
+      search: readSearchContext(),
+    });
 
     const payload: MiningPayload = {
       sentence,
@@ -243,15 +320,20 @@ async function handleClick(
     } satisfies RuntimeMessage)) as MiningResult;
 
     if (!result.ok) {
+      await appendDebugLog("content", "handleClick:background-error", result);
       throw new Error(result.error);
     }
 
+    await appendDebugLog("content", "handleClick:success", result);
     setButtonState(button, "success", "Sent");
     window.setTimeout(
       () => setButtonState(button, "idle", "Add to latest Anki card"),
       2000,
     );
   } catch (error) {
+    await appendDebugLog("content", "handleClick:error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     setButtonState(
       button,
       "error",
@@ -389,7 +471,8 @@ async function resolveMediaUrls(
   miningToggle: HTMLElement | null,
 ): Promise<{ imageUrl?: string; audioUrl?: string }> {
   const initial = findMediaUrls(root);
-  if (initial.imageUrl || initial.audioUrl) {
+  await appendDebugLog("content", "resolveMediaUrls:initial", initial);
+  if (initial.imageUrl && initial.audioUrl) {
     return initial;
   }
 
@@ -400,12 +483,31 @@ async function resolveMediaUrls(
     await wait(250);
 
     const afterOpen = findMediaUrls(root);
-    if (afterOpen.imageUrl || afterOpen.audioUrl) {
-      return afterOpen;
+    await appendDebugLog("content", "resolveMediaUrls:after-open", afterOpen);
+    const mergedAfterOpen = {
+      imageUrl: initial.imageUrl ?? afterOpen.imageUrl,
+      audioUrl: initial.audioUrl ?? afterOpen.audioUrl,
+    };
+    if (mergedAfterOpen.imageUrl && mergedAfterOpen.audioUrl) {
+      return mergedAfterOpen;
     }
+
+    const globalAfterOpen = findGlobalMediaUrls();
+    await appendDebugLog("content", "resolveMediaUrls:global-after-open", globalAfterOpen);
+    return {
+      imageUrl:
+        mergedAfterOpen.imageUrl ?? globalAfterOpen.imageUrl ?? initial.imageUrl,
+      audioUrl:
+        mergedAfterOpen.audioUrl ?? globalAfterOpen.audioUrl ?? initial.audioUrl,
+    };
   }
 
-  return findGlobalMediaUrls();
+  const globalFallback = findGlobalMediaUrls();
+  await appendDebugLog("content", "resolveMediaUrls:global-fallback", globalFallback);
+  return {
+    imageUrl: initial.imageUrl ?? globalFallback.imageUrl,
+    audioUrl: initial.audioUrl ?? globalFallback.audioUrl,
+  };
 }
 
 function findMediaUrls(root: HTMLElement): {
