@@ -1,12 +1,12 @@
-# ![ImmersionKit Mining Helper](_extension_store/icon-128.png) Immersion Kit Mining Helper
+# ![ImmersionKit Mining Helper](_extension_store/icon-128.png) ImmersionKit Mining Helper
 
-Immersion Kit Mining Helper adds an `Add to latest Anki card` action to Immersion Kit example rows. It sends the selected sentence, image, and audio to your latest matching Anki note through AnkiConnect.
+ImmersionKit Mining Helper adds an `Add to latest Anki card` action to ImmersionKit example rows. It sends the selected sentence, image, and audio to your latest matching Anki note through AnkiConnect.
 
 ## Screenshots
 
-![Immersion Kit Mining Helper screenshot 1](_extension_store/screenshots/screen1.jpg)
+![ImmersionKit Mining Helper screenshot 1](_extension_store/screenshots/screen1.jpg)
 
-![Immersion Kit Mining Helper screenshot 2](_extension_store/screenshots/screen2.jpg)
+![ImmersionKit Mining Helper screenshot 2](_extension_store/screenshots/screen2.jpg)
 
 ## Using the Extension
 
