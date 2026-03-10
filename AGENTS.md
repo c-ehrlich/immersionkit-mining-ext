@@ -1,0 +1,1 @@
+- run `pnpm build` whenever you're dong with a task that changed code
