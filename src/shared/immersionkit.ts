@@ -1,53 +1,61 @@
-import type {ExampleCandidate, MiningPayload, SearchContext} from './types';
+import type { ExampleCandidate, MiningPayload, SearchContext } from "./types";
 
 type SearchResponse = {
   examples: ExampleCandidate[];
 };
 
 const TITLE_OVERRIDES: Record<string, string> = {
-  steins_gate: 'Steins Gate',
-  durarara__: 'Durarara!!',
-  re_zero___starting_life_in_another_world: 'Re Zero - Starting Life in Another World',
-  k_on_: 'K On!',
-  boku_no_hero_academia_season_1: 'Boku no Hero Academia Season 1',
-  fate_stay_night_unlimited_blade_works: 'Fate Stay Night Unlimited Blade Works',
-  is_the_order_a_rabbit: 'Is the Order a Rabbit',
-  god_s_blessing_on_this_wonderful_world_: 'God s Blessing on this Wonderful World',
-  alya_sometimes_hides_her_feelings_in_russian: 'Alya Sometimes Hides Her Feelings in Russian',
-  frieren_beyond_journey_s_end: 'Frieren Beyond Journey s End'
+  steins_gate: "Steins Gate",
+  durarara__: "Durarara!!",
+  re_zero___starting_life_in_another_world:
+    "Re Zero - Starting Life in Another World",
+  k_on_: "K On!",
+  boku_no_hero_academia_season_1: "Boku no Hero Academia Season 1",
+  fate_stay_night_unlimited_blade_works:
+    "Fate Stay Night Unlimited Blade Works",
+  is_the_order_a_rabbit: "Is the Order a Rabbit",
+  god_s_blessing_on_this_wonderful_world_:
+    "God s Blessing on this Wonderful World",
+  alya_sometimes_hides_her_feelings_in_russian:
+    "Alya Sometimes Hides Her Feelings in Russian",
+  frieren_beyond_journey_s_end: "Frieren Beyond Journey s End",
 };
 
 function normalizeText(value: string): string {
-  return value.replace(/\s+/g, ' ').trim().toLowerCase();
+  return value.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
-export async function searchExamples(search: SearchContext): Promise<ExampleCandidate[]> {
+export async function searchExamples(
+  search: SearchContext,
+): Promise<ExampleCandidate[]> {
   const params = new URLSearchParams({
-    q: search.keyword
+    q: search.keyword,
   });
 
   if (search.exactMatch) {
-    params.set('exactMatch', 'true');
+    params.set("exactMatch", "true");
   }
   if (search.sort) {
-    params.set('sort', search.sort);
+    params.set("sort", search.sort);
   }
   if (search.jlpt) {
-    params.set('jlpt', search.jlpt);
+    params.set("jlpt", search.jlpt);
   }
   if (search.wk) {
-    params.set('wk', search.wk);
+    params.set("wk", search.wk);
   }
-  if (search.category && search.category !== 'all') {
-    params.set('category', search.category);
+  if (search.category && search.category !== "all") {
+    params.set("category", search.category);
   }
   if (search.index) {
-    params.set('index', search.index);
+    params.set("index", search.index);
   }
 
-  const response = await fetch(`https://apiv2.immersionkit.com/search?${params.toString()}`);
+  const response = await fetch(
+    `https://apiv2.immersionkit.com/search?${params.toString()}`,
+  );
   if (!response.ok) {
-    throw new Error(`Immersion Kit search failed (${response.status})`);
+    throw new Error(`ImmersionKit search failed (${response.status})`);
   }
 
   const json = (await response.json()) as SearchResponse;
@@ -56,12 +64,12 @@ export async function searchExamples(search: SearchContext): Promise<ExampleCand
 
 export function findMatchingExample(
   examples: ExampleCandidate[],
-  payload: Pick<MiningPayload, 'sentence' | 'translation' | 'title'>
+  payload: Pick<MiningPayload, "sentence" | "translation" | "title">,
 ): ExampleCandidate | null {
   const ranked = examples
     .map((example) => ({
       example,
-      score: scoreExampleMatch(example, payload)
+      score: scoreExampleMatch(example, payload),
     }))
     .sort((left, right) => right.score - left.score);
 
@@ -79,14 +87,18 @@ function slugToTitlePath(slug: string): string {
   }
 
   return slug
-    .split('_')
+    .split("_")
     .filter((part) => part.length > 0)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
+    .join(" ");
 }
 
-function buildMediaPath(id: string, fileName: string, titleSlug: string): string {
-  const mediaType = id.split('_')[0];
+function buildMediaPath(
+  id: string,
+  fileName: string,
+  titleSlug: string,
+): string {
+  const mediaType = id.split("_")[0];
   const titlePath = slugToTitlePath(titleSlug);
   return `media/${mediaType}/${titlePath}/media/${fileName}`;
 }
@@ -111,17 +123,19 @@ export function buildAudioUrl(example: ExampleCandidate): string | null {
 
 function scoreExampleMatch(
   example: ExampleCandidate,
-  payload: Pick<MiningPayload, 'sentence' | 'translation' | 'title'>
+  payload: Pick<MiningPayload, "sentence" | "translation" | "title">,
 ): number {
   const sentence = normalizeText(payload.sentence);
-  const translation = normalizeText(payload.translation ?? '');
-  const title = normalizeText(payload.title ?? '');
+  const translation = normalizeText(payload.translation ?? "");
+  const title = normalizeText(payload.title ?? "");
 
   const exampleSentence = normalizeText(example.sentence);
-  const exampleSentenceWithFurigana = normalizeText(example.sentence_with_furigana);
+  const exampleSentenceWithFurigana = normalizeText(
+    example.sentence_with_furigana,
+  );
   const exampleTranslation = normalizeText(example.translation);
   const exampleTitle = normalizeText(slugToTitlePath(example.title));
-  const exampleSlug = normalizeText(example.title.replaceAll('_', ' '));
+  const exampleSlug = normalizeText(example.title.replaceAll("_", " "));
 
   let score = 0;
 
@@ -130,7 +144,10 @@ function scoreExampleMatch(
       score += 160;
     } else if (exampleSentenceWithFurigana === sentence) {
       score += 150;
-    } else if (exampleSentence.includes(sentence) || sentence.includes(exampleSentence)) {
+    } else if (
+      exampleSentence.includes(sentence) ||
+      sentence.includes(exampleSentence)
+    ) {
       score += 80;
     }
   }

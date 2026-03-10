@@ -2,10 +2,10 @@ import { defineManifest } from "@crxjs/vite-plugin";
 
 export default defineManifest({
   manifest_version: 3,
-  name: "Immersion Kit Mining Helper",
+  name: "ImmersionKit Mining Helper",
   version: "0.1.0",
   description:
-    "Send Immersion Kit example sentence media to the latest Anki note.",
+    "Send ImmersionKit example sentence media to the latest Anki note.",
   permissions: ["storage"],
   host_permissions: [
     "https://www.immersionkit.com/*",

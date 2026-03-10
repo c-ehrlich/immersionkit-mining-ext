@@ -1,8 +1,8 @@
-# Immersion Kit Mining Extension Plan
+# ImmersionKit Mining Extension Plan
 
 ## Goal
 
-Build a Chrome extension in TypeScript that adds one custom button to each Immersion Kit example card on the dictionary page and updates the most recently created Anki note with:
+Build a Chrome extension in TypeScript that adds one custom button to each ImmersionKit example card on the dictionary page and updates the most recently created Anki note with:
 
 - sentence
 - image
@@ -27,7 +27,7 @@ The target Anki field names should be user-configurable.
 - Creating new notes
 - Editing multiple notes at once
 - Full settings UI polish
-- Supporting every Immersion Kit page outside the dictionary
+- Supporting every ImmersionKit page outside the dictionary
 - Supporting browsers other than Chrome
 
 ## Current feasibility summary
@@ -184,7 +184,7 @@ Use this order:
 
 API-only extraction is possible, but not the best v1 path. The search API returns media filenames and a title slug, while the final object path depends on the site's title mapping. Reading the resolved URL from the page is less fragile for v1.
 
-## Immersion Kit integration details
+## ImmersionKit integration details
 
 ### Search data source
 
@@ -408,7 +408,7 @@ Likely permissions:
 Likely extension parts:
 
 - background service worker
-- content script on Immersion Kit dictionary pages
+- content script on ImmersionKit dictionary pages
 - options page
 
 ## Testing plan
